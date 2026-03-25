@@ -66,5 +66,9 @@ Le fichier de données est situé dans : `./data`.
 | `TotalCharges`    | `str`             | Facturation cumulée |
 | `Churn`           | `str`             | **Cible** (Yes/No) |
 
+## Lexique
+
+⚠️ **Attention :**  Dans les Notebooks (Markdown) j'utilise 'x' pour le signe multiplié pour ne pas le confondre avec * pour les calcul matriciels 
+
 
 
