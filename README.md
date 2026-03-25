@@ -70,5 +70,27 @@ Le fichier de données est situé dans : `./data`.
 
 ⚠️ **Attention :**  Dans les Notebooks (Markdown) j'utilise 'x' pour le signe multiplié pour ne pas le confondre avec * pour les calcul matriciels 
 
+## Notebooks
+
+Le projet contient actuellement 2 notebooks :
+
+1. **`notebooks/01_eda.ipynb`**
+- Import des librairies et chargement du dataset.
+- Vérification des types de colonnes et détection des valeurs manquantes (avec conversion des chaînes vides en `NaN` sur les colonnes texte).
+- Recherche de doublons.
+- Détection de valeurs aberrantes :
+  - boxplots sur les variables numériques (`SeniorCitizen`, `tenure`, `MonthlyCharges`) ;
+  - contrôle des modalités attendues pour les colonnes `Yes/No` et `MultipleLines`.
+- Contrôles de cohérence (`tenure >= 0`, `MonthlyCharges >= 0`).
+- Récapitulatif qualité des données.
+- Exploration de la cible :
+  - taux global de churn ;
+  - analyse des résiliés par segments avec visualisations (barres, ligne, nuage de points, camemberts).
+
+2. **`notebooks/02_baseline_model.ipynb`**
+- Conversion de `TotalCharges` en numérique (`pd.to_numeric(..., errors="coerce")`) et vérification des valeurs manquantes.
+- Analyse de corrélation des variables numériques (matrice + heatmap).
+- Justification de l'imputation de `TotalCharges` à partir de `tenure * MonthlyCharges`.
+- Imputation des `TotalCharges` manquants pour construire une baseline de préparation des données.
 
 
