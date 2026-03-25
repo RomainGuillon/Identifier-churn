@@ -40,11 +40,31 @@ Le fichier de données est situé dans : `./data`.
 - Une ligne = un client
 - La variable cible est `Churn` (`Yes` / `No`)
 
-### Structure attendue
-Le dataset contient généralement :
-- un identifiant client (`customerID`),
-- des variables démographiques (ex. `gender`, `SeniorCitizen`, `Partner`, `Dependents`),
-- des variables d'abonnement/services (ex. `PhoneService`, `InternetService`, `OnlineSecurity`, etc.),
-- des variables contractuelles (ex. `Contract`, `PaperlessBilling`, `PaymentMethod`, `tenure`),
-- des variables de facturation (`MonthlyCharges`, `TotalCharges`),
-- la cible `Churn`.
+### Colonnes et types
+
+| Colonne           | Type (brut CSV)   | Description |
+|---                |---                |---|
+| `customerID`      | `str`             | Identifiant client unique |
+| `gender`          | `str`             | Sexe du client |
+| `SeniorCitizen`   | `int64`           | Client senior (0/1) |
+| `Partner`         | `str`             | A un partenaire (Yes/No) |
+| `Dependents`      | `str`             | A des personnes à charge (Yes/No) |
+| `tenure`          | `int64`           | Ancienneté client (mois) |
+| `PhoneService`    | `str`             | Service téléphonique (Yes/No) |
+| `MultipleLines`   | `str`             | Lignes multiples (Yes/No/No phone service) |
+| `InternetService` | `str`             | Type d’accès internet |
+| `OnlineSecurity`  | `str`             | Option sécurité en ligne |
+| `OnlineBackup`    | `str`             | Option sauvegarde en ligne |
+| `DeviceProtection`| `str`             | Protection appareil |
+| `TechSupport`     | `str`             | Support technique |
+| `StreamingTV`     | `str`             | Streaming TV |
+| `StreamingMovies` | `str`             | Streaming films |
+| `Contract`        | `str`             | Type de contrat |
+| `PaperlessBilling`| `str`             | Facture dématérialisée (Yes/No) |
+| `PaymentMethod`   | `str`             | Méthode de paiement |
+| `MonthlyCharges`  | `float64`         | Facturation mensuelle |
+| `TotalCharges`    | `str`             | Facturation cumulée |
+| `Churn`           | `str`             | **Cible** (Yes/No) |
+
+
+
