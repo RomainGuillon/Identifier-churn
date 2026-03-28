@@ -1,5 +1,5 @@
 
-⚠️ **Attention :** Bran Main = branch Dev. Branch ModifGraph en test (modification des graphs)
+
 
 # Scoring de churn client
 
