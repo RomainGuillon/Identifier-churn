@@ -1,99 +1,289 @@
-
-
-
 # Scoring de churn client
 
 ## Contexte
 
-Vous endossez le rôle de Data Scientist au sein de **TelcoWave**, un opérateur télécom (mobile + fibre) présent en Europe.  
-La direction **Customer Success** vous confie un enjeu prioritaire : réduire le **churn** (résiliations) au prochain trimestre.
+Vous endossez le rôle de Data Scientist au sein de **TelcoWave**, un opérateur télécom présent en Europe.
 
-L'entreprise souhaite mettre en place un programme de rétention ciblé (appels sortants, remise commerciale, changement d'offre).  
-Votre mission : construire un modèle de scoring capable d'estimer la probabilité de churn pour chaque client, afin de prioriser les actions sur les clients les plus à risque, avec un budget marketing limité.
+La direction **Customer Success** souhaite réduire le **churn** au prochain trimestre. L'entreprise veut mettre en place un programme de rétention ciblé : appels sortants, remise commerciale, changement d'offre ou accompagnement client.
 
-Le livrable attendu est un dépôt Git reproductible contenant :
-- l'analyse exploratoire,
-- un modèle baseline,
-- puis un modèle finetuné,
-- accompagné d'une recommandation de seuil/stratégie de ciblage (top K% ou seuil de probabilité).
+L'objectif du projet est de construire un modèle capable d'estimer la probabilité de churn pour chaque client, afin de prioriser les actions sur les clients les plus à risque avec un budget marketing limité.
 
+## Objectif métier
 
-## Données et cible
+Le projet ne cherche pas seulement à prédire une classe `Churn` / `No Churn`. Il vise surtout à produire un **score de risque** permettant de classer les clients du plus risqué au moins risqué.
 
-Le jeu de données fourni est un extrait anonymisé de **TelcoWave** (un enregistrement par client).  
-Il contient des informations :
-- démographiques,
-- sur les services souscrits,
-- contractuelles,
-- et de facturation (`tenure`, `MonthlyCharges`, `TotalCharges`).
+La priorité métier est donc :
 
-**Variable cible :** `Churn` (`Yes`/`No`)  
-Le client a résilié dans la dernière période observée.
+- identifier les clients les plus susceptibles de churner ;
+- concentrer les actions marketing sur les clients les plus à risque ;
+- comparer les modèles avec des métriques adaptées au ciblage, notamment `precision@10%`.
 
-**Format :** CSV fourni par l'équipe pédagogique (issu du dataset public Kaggle *Telco Customer Churn*).
+## Données
 
-## Format et structure du CSV
+Le jeu de données utilisé est issu du dataset public **Telco Customer Churn**. Il contient un enregistrement par client.
 
-Le fichier de données est situé dans : `./data`.
+Le fichier est situé dans :
 
-### Format
-- Type de fichier : CSV
-- Encodage : UTF-8 (recommandé)
-- Séparateur : `,`
-- Une ligne = un client
-- La variable cible est `Churn` (`Yes` / `No`)
+```text
+data/WA_Fn-UseC_-Telco-Customer-Churn.csv
+```
 
-### Colonnes et types
+La variable cible est :
 
-| Colonne           | Type (brut CSV)   | Description |
-|---                |---                |---|
-| `customerID`      | `str`             | Identifiant client unique |
-| `gender`          | `str`             | Sexe du client |
-| `SeniorCitizen`   | `int64`           | Client senior (0/1) |
-| `Partner`         | `str`             | A un partenaire (Yes/No) |
-| `Dependents`      | `str`             | A des personnes à charge (Yes/No) |
-| `tenure`          | `int64`           | Ancienneté client (mois) |
-| `PhoneService`    | `str`             | Service téléphonique (Yes/No) |
-| `MultipleLines`   | `str`             | Lignes multiples (Yes/No/No phone service) |
-| `InternetService` | `str`             | Type d’accès internet |
-| `OnlineSecurity`  | `str`             | Option sécurité en ligne |
-| `OnlineBackup`    | `str`             | Option sauvegarde en ligne |
-| `DeviceProtection`| `str`             | Protection appareil |
-| `TechSupport`     | `str`             | Support technique |
-| `StreamingTV`     | `str`             | Streaming TV |
-| `StreamingMovies` | `str`             | Streaming films |
-| `Contract`        | `str`             | Type de contrat |
-| `PaperlessBilling`| `str`             | Facture dématérialisée (Yes/No) |
-| `PaymentMethod`   | `str`             | Méthode de paiement |
-| `MonthlyCharges`  | `float64`         | Facturation mensuelle |
-| `TotalCharges`    | `str`             | Facturation cumulée |
-| `Churn`           | `str`             | **Cible** (Yes/No) |
+```text
+Churn
+```
 
-## Lexique
+Elle prend deux valeurs :
 
-⚠️ **Attention :**  Dans les Notebooks (Markdown) j'utilise 'x' pour le signe multiplié pour ne pas le confondre avec * pour les calcul matriciels 
+- `Yes` : le client a résilié ;
+- `No` : le client n'a pas résilié.
+
+## Structure des données
+
+Le dataset contient des variables :
+
+- démographiques : `gender`, `SeniorCitizen`, `Partner`, `Dependents` ;
+- liées aux services : `PhoneService`, `MultipleLines`, `InternetService`, `OnlineSecurity`, `OnlineBackup`, `DeviceProtection`, `TechSupport`, `StreamingTV`, `StreamingMovies` ;
+- contractuelles : `Contract`, `PaperlessBilling`, `PaymentMethod` ;
+- financières : `tenure`, `MonthlyCharges`, `TotalCharges`.
+
+### Colonnes principales
+
+| Colonne | Description |
+|---|---|
+| `customerID` | Identifiant client |
+| `tenure` | Ancienneté client en mois |
+| `Contract` | Type de contrat |
+| `PaymentMethod` | Moyen de paiement |
+| `InternetService` | Type d'accès internet |
+| `OnlineSecurity` | Option sécurité en ligne |
+| `OnlineBackup` | Option sauvegarde |
+| `DeviceProtection` | Protection appareil |
+| `TechSupport` | Support technique |
+| `PaperlessBilling` | Facture dématérialisée |
+| `MonthlyCharges` | Montant mensuel facturé |
+| `TotalCharges` | Montant total facturé |
+| `Churn` | Variable cible |
 
 ## Notebooks
 
-Le projet contient actuellement 2 notebooks :
+Le projet contient deux notebooks principaux.
 
-1. **`notebooks/01_eda.ipynb`**
-- Import des librairies et chargement du dataset.
-- Vérification des types de colonnes et détection des valeurs manquantes (avec conversion des chaînes vides en `NaN` sur les colonnes texte).
-- Recherche de doublons.
-- Détection de valeurs aberrantes :
-  - boxplots sur les variables numériques (`SeniorCitizen`, `tenure`, `MonthlyCharges`) ;
-  - contrôle des modalités attendues pour les colonnes `Yes/No` et `MultipleLines`.
-- Contrôles de cohérence (`tenure >= 0`, `MonthlyCharges >= 0`).
-- Récapitulatif qualité des données.
-- Exploration de la cible :
-  - taux global de churn ;
-  - analyse des résiliés par segments avec visualisations (barres, ligne, nuage de points, camemberts).
+### `notebooks/01_eda.ipynb`
 
-2. **`notebooks/02_baseline_model.ipynb`**
-- Conversion de `TotalCharges` en numérique (`pd.to_numeric(..., errors="coerce")`) et vérification des valeurs manquantes.
-- Analyse de corrélation des variables numériques (matrice + heatmap).
-- Justification de l'imputation de `TotalCharges` à partir de `tenure * MonthlyCharges`.
-- Imputation des `TotalCharges` manquants pour construire une baseline de préparation des données.
+Ce notebook contient l'analyse exploratoire des données.
+
+Il couvre :
+
+- le chargement du dataset ;
+- la vérification des types de données ;
+- la recherche de valeurs manquantes ;
+- la recherche de doublons ;
+- la détection d'outliers sur les variables numériques ;
+- les contrôles de cohérence métier ;
+- l'analyse du taux global de churn ;
+- l'analyse du churn par segments ;
+- l'analyse de l'impact financier du churn avec `MonthlyCharges` et `TotalCharges`.
+
+Les principales variables analysées sont :
+
+- `tenure` ;
+- `Contract` ;
+- `PaymentMethod` ;
+- `InternetService` ;
+- `OnlineSecurity` ;
+- `OnlineBackup` ;
+- `DeviceProtection` ;
+- `TechSupport` ;
+- `PaperlessBilling` ;
+- `Partner` ;
+- `Dependents` ;
+- `PhoneService` ;
+- `MultipleLines` ;
+- `StreamingTV` ;
+- `StreamingMovies` ;
+- `MonthlyCharges` ;
+- `TotalCharges`.
+
+### Principaux constats EDA
+
+Le taux global de churn est d'environ **26,5%**. Le dataset présente donc un déséquilibre modéré : environ un client sur quatre churn.
+
+L'analyse exploratoire montre que plusieurs variables sont fortement associées au churn :
+
+- les clients récents, notamment ceux avec une faible `tenure`, churnent beaucoup plus que les clients anciens ;
+- les contrats `Month-to-month` présentent un taux de churn nettement plus élevé que les contrats d'un ou deux ans ;
+- le paiement par `Electronic check` est associé à un churn plus élevé que les paiements automatiques ;
+- l'absence de services comme `OnlineSecurity`, `TechSupport`, `OnlineBackup` ou `DeviceProtection` est associée à un risque de churn plus important ;
+- les clients avec `Partner` ou `Dependents` semblent plus stables ;
+- `PhoneService`, `MultipleLines`, `gender`, `StreamingTV` et `StreamingMovies` semblent moins discriminants pris isolément.
+
+L'analyse financière montre que les clients avec des `MonthlyCharges` élevés représentent un enjeu business important. Les tranches de charges mensuelles élevées combinent un taux de churn important et un revenu mensuel à risque plus élevé.
+
+`TotalCharges` est interprété avec prudence : il représente un revenu historique déjà généré, pas une perte future directe.
+
+## `notebooks/02_baseline_model.ipynb`
+
+Ce notebook contient la préparation des données pour la modélisation, l'entraînement de plusieurs modèles et leur évaluation.
+
+### Split des données
+
+Le dataset est séparé en trois parties :
+
+- un jeu de validation finale de 10% ;
+- un jeu d'entraînement ;
+- un jeu de test.
+
+La séparation est stratifiée sur `Churn` afin de conserver une proportion similaire de churners dans chaque jeu.
+
+### Variables utilisées
+
+Les variables utilisées pour l'apprentissage sont :
+
+```python
+features = [
+    "tenure",
+    "MonthlyCharges",
+    "TotalCharges",
+    "Contract",
+    "PaymentMethod",
+    "OnlineSecurity",
+    "InternetService",
+    "OnlineBackup",
+    "DeviceProtection",
+    "TechSupport",
+    "PaperlessBilling",
+    "Dependents",
+    "Partner",
+    "SeniorCitizen"
+]
+```
+
+### Preprocessing
+
+Le preprocessing est construit avec un `ColumnTransformer`.
+
+Les variables numériques sont :
+
+```python
+num_cols = [
+    "tenure",
+    "MonthlyCharges",
+    "SeniorCitizen",
+    "TotalCharges"
+]
+```
+
+Les variables catégorielles sont :
+
+```python
+cat_cols = [
+    "InternetService",
+    "PaymentMethod",
+    "Contract",
+    "OnlineSecurity",
+    "OnlineBackup",
+    "DeviceProtection",
+    "TechSupport",
+    "PaperlessBilling",
+    "Dependents",
+    "Partner"
+]
+```
+
+Les étapes de preprocessing sont :
+
+- imputation de `TotalCharges` manquant avec la formule `tenure * MonthlyCharges` ;
+- standardisation des variables numériques avec `StandardScaler` ;
+- encodage des variables catégorielles avec `OneHotEncoder` ;
+- conservation des noms de colonnes en sortie avec `set_output(transform="pandas")`.
+
+## Modèles comparés
+
+Plusieurs modèles sont entraînés et comparés :
+
+- `DummyClassifier`, comme baseline naïve ;
+- `LogisticRegression`, comme baseline interprétable ;
+- `RandomForestClassifier` ;
+- `GradientBoostingClassifier` ;
+- `XGBClassifier` ;
+- `LGBMClassifier`.
+
+Le `DummyClassifier` permet de vérifier que les modèles apportent une réelle valeur par rapport à une stratégie simple consistant à prédire systématiquement la classe majoritaire.
+
+## Métriques d'évaluation
+
+Les modèles sont évalués avec des métriques classiques et métier.
+
+Métriques utilisées :
+
+- **ROC-AUC** : capacité globale du modèle à distinguer churners et non-churners ;
+- **matrice de confusion** : analyse des vrais positifs, faux positifs, vrais négatifs et faux négatifs ;
+- **precision** : proportion de vrais churners parmi les clients prédits comme churners ;
+- **recall** : proportion de churners réellement détectés ;
+- **F1-score** : compromis entre précision et rappel ;
+- **precision@10%** : proportion de vrais churners parmi les 10% de clients ayant la probabilité de churn prédite la plus élevée.
+
+La métrique `precision@10%` est particulièrement importante pour ce projet, car elle simule un cas métier où le budget marketing ne permet de cibler qu'une partie limitée des clients.
+
+## Lecture métier des modèles
+
+Les modèles avec un rappel élevé détectent plus de churners, mais peuvent générer davantage de faux positifs.
+
+Les modèles avec une précision élevée ciblent moins de clients à tort, mais peuvent manquer davantage de churners.
+
+Dans un contexte de budget marketing limité, le choix du modèle ne doit donc pas être fait uniquement avec l'accuracy. Il doit tenir compte du compromis entre :
+
+- la capacité à détecter les clients à risque ;
+- la qualité du ciblage ;
+- le volume de clients que l'entreprise peut réellement contacter.
+
+## Installation
+
+Créer puis activer un environnement virtuel :
+
+```bash
+python -m venv .venv
+```
+
+Sous Windows PowerShell :
+
+```bash
+.venv\Scripts\Activate.ps1
+```
+
+Installer les dépendances :
+
+```bash
+pip install -r requirements.txt
+```
+
+## Dépendances principales
+
+Le projet utilise notamment :
+
+- `pandas` ;
+- `numpy` ;
+- `scikit-learn` ;
+- `matplotlib` ;
+- `plotly` ;
+- `xgboost` ;
+- `lightgbm` ;
+- `jupyter` ou `ipykernel`.
+
+## Structure du projet
+
+```text
+Projet_DataGong/
+├── data/
+│   └── WA_Fn-UseC_-Telco-Customer-Churn.csv
+├── notebooks/
+│   ├── 01_eda.ipynb
+│   └── 02_baseline_model.ipynb
+├── README.md
+├── requirements.txt
+└── .gitignore
+```
 
 
