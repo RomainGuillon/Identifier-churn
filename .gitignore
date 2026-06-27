@@ -207,6 +207,9 @@ marimo/_lsp/
 __marimo__/
 
 
-#mes tests 
+#mes tests
 /graphs
 test.py
+
+# Sujet du projet (document de cadrage, pas du livrable)
+Projet_Data_Scientist_Telco_Churn.pdf
