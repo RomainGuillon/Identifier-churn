@@ -87,6 +87,13 @@ notebooks/03_finetuned_model.ipynb → Modèle finetuné + scoring final
 
 Chaque notebook est autonome et reproductible (`random_state=42` partout).
 
+La logique des notebooks est aussi factorisée dans `src/`, exécutable en ligne de commande :
+
+```bash
+python src/train.py                    # baseline + finetuné calibré, sauvegarde modèles et métriques
+python src/infer.py --threshold 0.42   # génère le fichier de scoring
+```
+
 Les artefacts produits sont sauvegardés automatiquement dans :
 
 - `models/` — pipelines entraînées (`.joblib`)
@@ -135,10 +142,10 @@ Les artefacts produits sont sauvegardés automatiquement dans :
 
 | Modèle | ROC-AUC | Recall | Precision@10% | Brier Score |
 |---|---|---|---|---|
-| Baseline (LR) | ~0.846 | ~0.819 | ~0.754 | — |
-| Finetuné (LR calibré) | ↑ | ↑ | ↑ | ↓ (meilleur) |
+| Baseline (LR) | 0.846 | 0.819 | 0.754 | 0.168 |
+| Finetuné (LR calibré) | 0.846 | 0.525 | 0.754 | 0.136 |
 
-> Les valeurs exactes sont disponibles dans `outputs/metrics_report.csv` et `outputs/metrics_report_calibrated.csv`.
+Le finetuning n'améliore pas le pouvoir de classement (ROC-AUC et precision@10% stables) : son apport est la **calibration** (Brier 0.168 → 0.136), qui rend les probabilités fiables pour la décision coût/bénéfice. Détail complet dans `reports/model_report.md` et `outputs/metrics_report*.csv`.
 
 ## Décision de seuil et stratégie de ciblage
 
@@ -190,10 +197,12 @@ Projet_DataGong/
 │   ├── metrics_report.csv
 │   └── metrics_report_calibrated.csv
 ├── reports/
+│   ├── model_report.md
 │   └── figures/
 │       ├── model_comparison.png
 │       ├── calibration_comparison.png
 │       ├── permutation_importance.png
+│       ├── threshold_optimization.png
 │       └── baseline_vs_finetuned.png
 ├── src/
 │   ├── data_prep.py
