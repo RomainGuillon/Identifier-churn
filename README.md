@@ -1,4 +1,4 @@
-# Scoring de churn client
+# Scoring de churn client — Telco Customer Churn
 
 ## Contexte
 
@@ -20,7 +20,7 @@ La priorité métier est donc :
 
 ## Données
 
-Le jeu de données utilisé est issu du dataset public **Telco Customer Churn**. Il contient un enregistrement par client.
+Le jeu de données utilisé est issu du dataset public **Telco Customer Churn** (Kaggle). Il contient un enregistrement par client.
 
 Le fichier est situé dans :
 
@@ -28,16 +28,7 @@ Le fichier est situé dans :
 data/WA_Fn-UseC_-Telco-Customer-Churn.csv
 ```
 
-La variable cible est :
-
-```text
-Churn
-```
-
-Elle prend deux valeurs :
-
-- `Yes` : le client a résilié ;
-- `No` : le client n'a pas résilié.
+La variable cible est `Churn` (Yes / No) — environ **26,5% de churners** (déséquilibre modéré).
 
 ## Structure des données
 
@@ -47,8 +38,6 @@ Le dataset contient des variables :
 - liées aux services : `PhoneService`, `MultipleLines`, `InternetService`, `OnlineSecurity`, `OnlineBackup`, `DeviceProtection`, `TechSupport`, `StreamingTV`, `StreamingMovies` ;
 - contractuelles : `Contract`, `PaperlessBilling`, `PaymentMethod` ;
 - financières : `tenure`, `MonthlyCharges`, `TotalCharges`.
-
-### Colonnes principales
 
 | Colonne | Description |
 |---|---|
@@ -63,181 +52,8 @@ Le dataset contient des variables :
 | `TechSupport` | Support technique |
 | `PaperlessBilling` | Facture dématérialisée |
 | `MonthlyCharges` | Montant mensuel facturé |
-| `TotalCharges` | Montant total facturé |
-| `Churn` | Variable cible |
-
-## Notebooks
-
-Le projet contient deux notebooks principaux.
-
-### `notebooks/01_eda.ipynb`
-
-Ce notebook contient l'analyse exploratoire des données.
-
-Il couvre :
-
-- le chargement du dataset ;
-- la vérification des types de données ;
-- la recherche de valeurs manquantes ;
-- la recherche de doublons ;
-- la détection d'outliers sur les variables numériques ;
-- les contrôles de cohérence métier ;
-- l'analyse du taux global de churn ;
-- l'analyse du churn par segments ;
-- l'analyse de l'impact financier du churn avec `MonthlyCharges` et `TotalCharges`.
-
-Les principales variables analysées sont :
-
-- `tenure` ;
-- `Contract` ;
-- `PaymentMethod` ;
-- `InternetService` ;
-- `OnlineSecurity` ;
-- `OnlineBackup` ;
-- `DeviceProtection` ;
-- `TechSupport` ;
-- `PaperlessBilling` ;
-- `Partner` ;
-- `Dependents` ;
-- `PhoneService` ;
-- `MultipleLines` ;
-- `StreamingTV` ;
-- `StreamingMovies` ;
-- `MonthlyCharges` ;
-- `TotalCharges`.
-
-### Principaux constats EDA
-
-Le taux global de churn est d'environ **26,5%**. Le dataset présente donc un déséquilibre modéré : environ un client sur quatre churn.
-
-L'analyse exploratoire montre que plusieurs variables sont fortement associées au churn :
-
-- les clients récents, notamment ceux avec une faible `tenure`, churnent beaucoup plus que les clients anciens ;
-- les contrats `Month-to-month` présentent un taux de churn nettement plus élevé que les contrats d'un ou deux ans ;
-- le paiement par `Electronic check` est associé à un churn plus élevé que les paiements automatiques ;
-- l'absence de services comme `OnlineSecurity`, `TechSupport`, `OnlineBackup` ou `DeviceProtection` est associée à un risque de churn plus important ;
-- les clients avec `Partner` ou `Dependents` semblent plus stables ;
-- `PhoneService`, `MultipleLines`, `gender`, `StreamingTV` et `StreamingMovies` semblent moins discriminants pris isolément.
-
-L'analyse financière montre que les clients avec des `MonthlyCharges` élevés représentent un enjeu business important. Les tranches de charges mensuelles élevées combinent un taux de churn important et un revenu mensuel à risque plus élevé.
-
-`TotalCharges` est interprété avec prudence : il représente un revenu historique déjà généré, pas une perte future directe.
-
-## `notebooks/02_baseline_model.ipynb`
-
-Ce notebook contient la préparation des données pour la modélisation, l'entraînement de plusieurs modèles et leur évaluation.
-
-### Split des données
-
-Le dataset est séparé en trois parties :
-
-- un jeu de validation finale de 10% ;
-- un jeu d'entraînement ;
-- un jeu de test.
-
-La séparation est stratifiée sur `Churn` afin de conserver une proportion similaire de churners dans chaque jeu.
-
-### Variables utilisées
-
-Les variables utilisées pour l'apprentissage sont :
-
-```python
-features = [
-    "tenure",
-    "MonthlyCharges",
-    "TotalCharges",
-    "Contract",
-    "PaymentMethod",
-    "OnlineSecurity",
-    "InternetService",
-    "OnlineBackup",
-    "DeviceProtection",
-    "TechSupport",
-    "PaperlessBilling",
-    "Dependents",
-    "Partner",
-    "SeniorCitizen"
-]
-```
-
-### Preprocessing
-
-Le preprocessing est construit avec un `ColumnTransformer`.
-
-Les variables numériques sont :
-
-```python
-num_cols = [
-    "tenure",
-    "MonthlyCharges",
-    "SeniorCitizen",
-    "TotalCharges"
-]
-```
-
-Les variables catégorielles sont :
-
-```python
-cat_cols = [
-    "InternetService",
-    "PaymentMethod",
-    "Contract",
-    "OnlineSecurity",
-    "OnlineBackup",
-    "DeviceProtection",
-    "TechSupport",
-    "PaperlessBilling",
-    "Dependents",
-    "Partner"
-]
-```
-
-Les étapes de preprocessing sont :
-
-- imputation de `TotalCharges` manquant avec la formule `tenure * MonthlyCharges` ;
-- standardisation des variables numériques avec `StandardScaler` ;
-- encodage des variables catégorielles avec `OneHotEncoder` ;
-- conservation des noms de colonnes en sortie avec `set_output(transform="pandas")`.
-
-## Modèles comparés
-
-Plusieurs modèles sont entraînés et comparés :
-
-- `DummyClassifier`, comme baseline naïve ;
-- `LogisticRegression`, comme baseline interprétable ;
-- `RandomForestClassifier` ;
-- `GradientBoostingClassifier` ;
-- `XGBClassifier` ;
-- `LGBMClassifier`.
-
-Le `DummyClassifier` permet de vérifier que les modèles apportent une réelle valeur par rapport à une stratégie simple consistant à prédire systématiquement la classe majoritaire.
-
-## Métriques d'évaluation
-
-Les modèles sont évalués avec des métriques classiques et métier.
-
-Métriques utilisées :
-
-- **ROC-AUC** : capacité globale du modèle à distinguer churners et non-churners ;
-- **matrice de confusion** : analyse des vrais positifs, faux positifs, vrais négatifs et faux négatifs ;
-- **precision** : proportion de vrais churners parmi les clients prédits comme churners ;
-- **recall** : proportion de churners réellement détectés ;
-- **F1-score** : compromis entre précision et rappel ;
-- **precision@10%** : proportion de vrais churners parmi les 10% de clients ayant la probabilité de churn prédite la plus élevée.
-
-La métrique `precision@10%` est particulièrement importante pour ce projet, car elle simule un cas métier où le budget marketing ne permet de cibler qu'une partie limitée des clients.
-
-## Lecture métier des modèles
-
-Les modèles avec un rappel élevé détectent plus de churners, mais peuvent générer davantage de faux positifs.
-
-Les modèles avec une précision élevée ciblent moins de clients à tort, mais peuvent manquer davantage de churners.
-
-Dans un contexte de budget marketing limité, le choix du modèle ne doit donc pas être fait uniquement avec l'accuracy. Il doit tenir compte du compromis entre :
-
-- la capacité à détecter les clients à risque ;
-- la qualité du ciblage ;
-- le volume de clients que l'entreprise peut réellement contacter.
+| `TotalCharges` | Montant total facturé (11 valeurs vides si tenure = 0) |
+| `Churn` | Variable cible — Yes / No |
 
 ## Installation
 
@@ -259,18 +75,100 @@ Installer les dépendances :
 pip install -r requirements.txt
 ```
 
-## Dépendances principales
+## Reproduire le projet
 
-Le projet utilise notamment :
+Exécuter les notebooks dans l'ordre suivant :
 
-- `pandas` ;
-- `numpy` ;
-- `scikit-learn` ;
-- `matplotlib` ;
-- `plotly` ;
-- `xgboost` ;
-- `lightgbm` ;
-- `jupyter` ou `ipykernel`.
+```
+notebooks/01_eda.ipynb           → Analyse exploratoire
+notebooks/02_baseline_model.ipynb → Modèle baseline
+notebooks/03_finetuned_model.ipynb → Modèle finetuné + scoring final
+```
+
+Chaque notebook est autonome et reproductible (`random_state=42` partout).
+
+Les artefacts produits sont sauvegardés automatiquement dans :
+
+- `models/` — pipelines entraînées (`.joblib`)
+- `outputs/` — fichiers de scoring (`.csv`)
+- `reports/figures/` — graphiques exportés
+
+## Notebooks
+
+### `notebooks/01_eda.ipynb` — Analyse exploratoire
+
+- Dictionnaire de données (type, description, exemple, manquants)
+- Contrôle qualité : valeurs manquantes, doublons, outliers (IQR), cohérences métier
+- Taux de churn global et par segments (contrat, tenure, PaymentMethod, InternetService, services additionnels, profil familial)
+- Analyse de l'impact financier (revenu mensuel à risque par tranche de MonthlyCharges)
+- Définition du protocole d'évaluation
+
+**Principaux constats :**
+
+- Les clients récents (tenure < 12 mois) ont un taux de churn de ~48%, contre ~7% pour les clients anciens (> 60 mois)
+- Les contrats `Month-to-month` churnent à 43%, contre 3% pour les contrats `Two year`
+- Le paiement par `Electronic check` est associé à un churn de ~45%
+- L'absence de `OnlineSecurity` ou `TechSupport` double environ le risque de churn
+- `gender`, `PhoneService`, `MultipleLines` sont peu discriminants
+
+### `notebooks/02_baseline_model.ipynb` — Modèle baseline
+
+- Pipeline scikit-learn complète : imputation `TotalCharges`, `StandardScaler`, `OneHotEncoder` via `ColumnTransformer`
+- Comparaison de 6 modèles : `DummyClassifier`, `LogisticRegression`, `RandomForestClassifier`, `GradientBoostingClassifier`, `XGBClassifier`, `LGBMClassifier`
+- Évaluation : ROC-AUC, precision, recall, F1, precision@10%
+- Tableau comparatif visuel + matrices de confusion
+- Sauvegarde du modèle retenu et du fichier de scoring (`customerID`, `proba_churn`, `label_pred`)
+
+**Modèle retenu :** `LogisticRegression` — meilleure `precision@10%` (75,4%) et meilleur rappel, cohérent avec l'objectif de ciblage marketing.
+
+### `notebooks/03_finetuned_model.ipynb` — Modèle finetuné
+
+- **Feature engineering** : `PaymentMethod_grouped` (paiements automatiques regroupés), `Contract_grouped` (contrats longs regroupés), `has_family` (indicateur Partner ou Dependents)
+- **Hyperparamètres** : GridSearchCV sur `C` et `solver` (cv=5, scoring=roc_auc)
+- **Calibration** : `CalibratedClassifierCV` (sigmoid) — courbe de calibration + Brier score
+- **Interprétabilité** : permutation importance — top 15 variables
+- **Choix de seuil** : optimisation coût/bénéfice (coût offre = 15 €, valeur sauvée = 120 €, taux de succès = 30 %)
+- **Rapport comparatif** : baseline vs finetuné côte à côte
+- **Scoring final** : `customerID`, `proba_churn`, `label_pred`
+
+## Résultats
+
+| Modèle | ROC-AUC | Recall | Precision@10% | Brier Score |
+|---|---|---|---|---|
+| Baseline (LR) | ~0.846 | ~0.819 | ~0.754 | — |
+| Finetuné (LR calibré) | ↑ | ↑ | ↑ | ↓ (meilleur) |
+
+> Les valeurs exactes sont disponibles dans `outputs/metrics_report.csv` et `outputs/metrics_report_calibrated.csv`.
+
+## Décision de seuil et stratégie de ciblage
+
+**Hypothèses métier :**
+
+- Coût d'une action de rétention : **15 €**
+- Valeur mensuelle sauvée si rétention réussie : **120 €**
+- Taux de succès estimé de la rétention : **30 %**
+
+Le seuil économique minimal est : `15 / (120 × 0.30) ≈ 0.42`
+
+En dessous de ce seuil, l'action coûte plus qu'elle ne rapporte en espérance.
+
+**Recommandation :** utiliser le seuil optimal calculé dans `03_finetuned_model.ipynb` (section 9) qui maximise le gain attendu total. Pour un budget très contraint, cibler le **top 10%** offre la meilleure precision@10%.
+
+**Segments prioritaires (par ordre d'importance) :**
+
+1. Contrat `Month-to-month`
+2. Ancienneté < 12 mois
+3. Sans `OnlineSecurity` ni `TechSupport`
+4. Paiement par `Electronic check`
+5. `MonthlyCharges` > 70 €
+
+## Limites et risques
+
+- **Dataset statique** : pas de dimension temporelle, le modèle ne capture pas l'évolution du comportement client dans le temps.
+- **Taux de succès de rétention** : l'hypothèse de 30% est à valider sur le terrain avant d'extrapoler le gain attendu.
+- **SeniorCitizen** : variable binaire (0/1) traitée comme numérique — à surveiller.
+- **Fuite de données** : toutes les transformations apprennent uniquement sur le train via la Pipeline scikit-learn. Aucun leakage détecté.
+- **Pistes d'amélioration** : tester XGBoost/LightGBM finetuné, ajouter des features d'interaction (ex. `tenure × Contract`), intégrer une dimension temporelle si des données historiques sont disponibles.
 
 ## Structure du projet
 
@@ -280,10 +178,38 @@ Projet_DataGong/
 │   └── WA_Fn-UseC_-Telco-Customer-Churn.csv
 ├── notebooks/
 │   ├── 01_eda.ipynb
-│   └── 02_baseline_model.ipynb
+│   ├── 02_baseline_model.ipynb
+│   └── 03_finetuned_model.ipynb
+├── models/
+│   ├── baseline.joblib
+│   └── finetuned.joblib
+├── outputs/
+│   ├── scoring_test.csv
+│   ├── scoring_val.csv
+│   ├── scoring_final.csv
+│   ├── metrics_report.csv
+│   └── metrics_report_calibrated.csv
+├── reports/
+│   └── figures/
+│       ├── model_comparison.png
+│       ├── calibration_comparison.png
+│       ├── permutation_importance.png
+│       └── baseline_vs_finetuned.png
+├── src/
+│   ├── data_prep.py
+│   ├── train.py
+│   ├── metrics.py
+│   └── infer.py
 ├── README.md
 ├── requirements.txt
 └── .gitignore
 ```
 
+## Dépendances principales
 
+- `pandas`, `numpy`
+- `scikit-learn`
+- `matplotlib`, `plotly`
+- `xgboost`, `lightgbm`
+- `joblib`
+- `jupyter` / `ipykernel`
