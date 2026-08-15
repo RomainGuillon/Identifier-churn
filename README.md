@@ -1,224 +1,182 @@
-# Scoring de churn client — Telco Customer Churn
+# Scoring de churn client — TelcoWave
 
-## Contexte
+Prédire quels clients vont résilier, et surtout lesquels cibler en priorité avec un budget de rétention limité.
 
-Vous endossez le rôle de Data Scientist au sein de **TelcoWave**, un opérateur télécom présent en Europe.
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-1.8-blue)
+![ROC-AUC](https://img.shields.io/badge/ROC--AUC-0.846-informational)
+![Precision@10%](https://img.shields.io/badge/Precision%4010%25-75.4%25-informational)
 
-La direction **Customer Success** souhaite réduire le **churn** au prochain trimestre. L'entreprise veut mettre en place un programme de rétention ciblé : appels sortants, remise commerciale, changement d'offre ou accompagnement client.
+Projet de Data Science de bout en bout : de l'analyse exploratoire à un fichier de ciblage commercial actionnable, en passant par la comparaison de six modèles, la calibration des probabilités et l'optimisation économique du seuil de décision.
 
-L'objectif du projet est de construire un modèle capable d'estimer la probabilité de churn pour chaque client, afin de prioriser les actions sur les clients les plus à risque avec un budget marketing limité.
+---
 
-## Objectif métier
+## Contexte et problème
 
-Le projet ne cherche pas seulement à prédire une classe `Churn` / `No Churn`. Il vise surtout à produire un **score de risque** permettant de classer les clients du plus risqué au moins risqué.
+TelcoWave, opérateur télécom européen, perd 26,5 % de ses clients. La direction Customer Success lance un programme de rétention (appel sortant, remise commerciale, changement d'offre), mais le budget ne permet pas de contacter l'ensemble du parc.
 
-La priorité métier est donc :
+La question n'est donc pas « ce client va-t-il churner ? » mais :
 
-- identifier les clients les plus susceptibles de churner ;
-- concentrer les actions marketing sur les clients les plus à risque ;
-- comparer les modèles avec des métriques adaptées au ciblage, notamment `precision@10%`.
+> Sur quels clients dépenser les 15 € d'une action de rétention pour maximiser le revenu sauvé ?
 
-## Données
+C'est un problème de classement, pas de classification. La métrique de pilotage retenue est la `precision@10%` : la proportion de vrais churners dans le top 10 % des clients les plus à risque.
 
-Le jeu de données utilisé est issu du dataset public **Telco Customer Churn** (Kaggle). Il contient un enregistrement par client.
-
-Le fichier est situé dans :
-
-```text
-data/WA_Fn-UseC_-Telco-Customer-Churn.csv
-```
-
-La variable cible est `Churn` (Yes / No) — environ **26,5% de churners** (déséquilibre modéré).
-
-## Structure des données
-
-Le dataset contient des variables :
-
-- démographiques : `gender`, `SeniorCitizen`, `Partner`, `Dependents` ;
-- liées aux services : `PhoneService`, `MultipleLines`, `InternetService`, `OnlineSecurity`, `OnlineBackup`, `DeviceProtection`, `TechSupport`, `StreamingTV`, `StreamingMovies` ;
-- contractuelles : `Contract`, `PaperlessBilling`, `PaymentMethod` ;
-- financières : `tenure`, `MonthlyCharges`, `TotalCharges`.
-
-| Colonne | Description |
-|---|---|
-| `customerID` | Identifiant client |
-| `tenure` | Ancienneté client en mois |
-| `Contract` | Type de contrat |
-| `PaymentMethod` | Moyen de paiement |
-| `InternetService` | Type d'accès internet |
-| `OnlineSecurity` | Option sécurité en ligne |
-| `OnlineBackup` | Option sauvegarde |
-| `DeviceProtection` | Protection appareil |
-| `TechSupport` | Support technique |
-| `PaperlessBilling` | Facture dématérialisée |
-| `MonthlyCharges` | Montant mensuel facturé |
-| `TotalCharges` | Montant total facturé (11 valeurs vides si tenure = 0) |
-| `Churn` | Variable cible — Yes / No |
-
-## Installation
-
-Créer puis activer un environnement virtuel :
-
-```bash
-python -m venv .venv
-```
-
-Sous Windows PowerShell :
-
-```bash
-.venv\Scripts\Activate.ps1
-```
-
-Installer les dépendances :
-
-```bash
-pip install -r requirements.txt
-```
-
-## Reproduire le projet
-
-Exécuter les notebooks dans l'ordre suivant :
-
-```
-notebooks/01_eda.ipynb           → Analyse exploratoire
-notebooks/02_baseline_model.ipynb → Modèle baseline
-notebooks/03_finetuned_model.ipynb → Modèle finetuné + scoring final
-```
-
-Chaque notebook est autonome et reproductible (`random_state=42` partout).
-
-La logique des notebooks est aussi factorisée dans `src/`, exécutable en ligne de commande :
-
-```bash
-python src/train.py                    # baseline + finetuné calibré, sauvegarde modèles et métriques
-python src/infer.py --threshold 0.42   # génère le fichier de scoring
-```
-
-Les artefacts produits sont sauvegardés automatiquement dans :
-
-- `models/` — pipelines entraînées (`.joblib`)
-- `outputs/` — fichiers de scoring (`.csv`)
-- `reports/figures/` — graphiques exportés
-
-## Notebooks
-
-### `notebooks/01_eda.ipynb` — Analyse exploratoire
-
-- Dictionnaire de données (type, description, exemple, manquants)
-- Contrôle qualité : valeurs manquantes, doublons, outliers (IQR), cohérences métier
-- Taux de churn global et par segments (contrat, tenure, PaymentMethod, InternetService, services additionnels, profil familial)
-- Analyse de l'impact financier (revenu mensuel à risque par tranche de MonthlyCharges)
-- Définition du protocole d'évaluation
-
-**Principaux constats :**
-
-- Les clients récents (tenure < 12 mois) ont un taux de churn de ~48%, contre ~7% pour les clients anciens (> 60 mois)
-- Les contrats `Month-to-month` churnent à 43%, contre 3% pour les contrats `Two year`
-- Le paiement par `Electronic check` est associé à un churn de ~45%
-- L'absence de `OnlineSecurity` ou `TechSupport` double environ le risque de churn
-- `gender`, `PhoneService`, `MultipleLines` sont peu discriminants
-
-### `notebooks/02_baseline_model.ipynb` — Modèle baseline
-
-- Pipeline scikit-learn complète : imputation `TotalCharges`, `StandardScaler`, `OneHotEncoder` via `ColumnTransformer`
-- Comparaison de 6 modèles : `DummyClassifier`, `LogisticRegression`, `RandomForestClassifier`, `GradientBoostingClassifier`, `XGBClassifier`, `LGBMClassifier`
-- Évaluation : ROC-AUC, precision, recall, F1, precision@10%
-- Tableau comparatif visuel + matrices de confusion
-- Sauvegarde du modèle retenu et du fichier de scoring (`customerID`, `proba_churn`, `label_pred`)
-
-**Modèle retenu :** `LogisticRegression` — meilleure `precision@10%` (75,4%) et meilleur rappel, cohérent avec l'objectif de ciblage marketing.
-
-### `notebooks/03_finetuned_model.ipynb` — Modèle finetuné
-
-- **Feature engineering** : `PaymentMethod_grouped` (paiements automatiques regroupés), `Contract_grouped` (contrats longs regroupés), `has_family` (indicateur Partner ou Dependents)
-- **Hyperparamètres** : GridSearchCV sur `C` et `solver` (cv=5, scoring=roc_auc)
-- **Calibration** : `CalibratedClassifierCV` (sigmoid) — courbe de calibration + Brier score
-- **Interprétabilité** : permutation importance — top 15 variables
-- **Choix de seuil** : optimisation coût/bénéfice (coût offre = 15 €, valeur sauvée = 120 €, taux de succès = 30 %)
-- **Rapport comparatif** : baseline vs finetuné côte à côte
-- **Scoring final** : `customerID`, `proba_churn`, `label_pred`
+---
 
 ## Résultats
 
-| Modèle | ROC-AUC | Recall | Precision@10% | Brier Score |
-|---|---|---|---|---|
-| Baseline (LR) | 0.846 | 0.819 | 0.754 | 0.168 |
-| Finetuné (LR calibré) | 0.846 | 0.525 | 0.754 | 0.136 |
+| Modèle | ROC-AUC | Précision | Rappel | Precision@10% | Brier (plus bas = mieux) |
+|---|---|---|---|---|---|
+| Baseline — Régression logistique | 0,846 | 0,510 | 0,819 | 0,754 | 0,168 |
+| Finetuné — LR calibrée | 0,846 | 0,660 | 0,525 | 0,754 | 0,136 |
+| Dummy (référence) | 0,500 | — | — | 0,262 | 0,266 |
 
-Le finetuning n'améliore pas le pouvoir de classement (ROC-AUC et precision@10% stables) : son apport est la **calibration** (Brier 0.168 → 0.136), qui rend les probabilités fiables pour la décision coût/bénéfice. Détail complet dans `reports/model_report.md` et `outputs/metrics_report*.csv`.
+Cibler le top 10 % du score capture 75 % de vrais churners, contre 26 % en ciblage aléatoire : un ciblage environ 2,9 fois plus efficace que le hasard.
 
-## Décision de seuil et stratégie de ciblage
+Le finetuning n'améliore pas le pouvoir de classement — ROC-AUC et `precision@10%` restent stables. Son apport réel est la calibration : le Brier score passe de 0,168 à 0,136, ce qui rend les probabilités fiables, condition indispensable pour raisonner en euros.
 
-**Hypothèses métier :**
+![Comparaison baseline vs finetuné](reports/figures/baseline_vs_finetuned.png)
 
-- Coût d'une action de rétention : **15 €**
-- Valeur mensuelle sauvée si rétention réussie : **120 €**
-- Taux de succès estimé de la rétention : **30 %**
+---
 
-Le seuil économique minimal est : `15 / (120 × 0.30) ≈ 0.42`
+## Du score à la décision business
 
-En dessous de ce seuil, l'action coûte plus qu'elle ne rapporte en espérance.
+Hypothèses métier : coût d'une action de rétention = 15 €, valeur mensuelle sauvée = 120 €, taux de succès estimé = 30 %.
 
-**Recommandation :** utiliser le seuil optimal calculé dans `03_finetuned_model.ipynb` (section 9) qui maximise le gain attendu total. Pour un budget très contraint, cibler le **top 10%** offre la meilleure precision@10%.
+Le seuil économique minimal est `15 / (120 × 0,30) ≈ 0,42`. En dessous, l'action coûte plus qu'elle ne rapporte en espérance.
 
-**Segments prioritaires (par ordre d'importance) :**
+| Stratégie | Clients ciblés | Précision | Gain attendu |
+|---|---|---|---|
+| Top 5 % | 63 | 76,2 % | ~745 € |
+| Top 10 % (budget contraint) | 126 | 75,4 % | ~1 325 € |
+| Top 20 % | 253 | 66,4 % | ~2 026 € |
+| Seuil 0,42 (gain maximal) | 369 (29,1 %) | ~59 % | ~2 240 € |
 
-1. Contrat `Month-to-month`
-2. Ancienneté < 12 mois
-3. Sans `OnlineSecurity` ni `TechSupport`
-4. Paiement par `Electronic check`
-5. `MonthlyCharges` > 70 €
+Mesuré sur le jeu de test (1 268 clients). Deux arbitrages possibles selon la contrainte : maximiser la qualité du ciblage (top 10 %) ou le gain total (seuil 0,42).
+
+![Optimisation du seuil](reports/figures/threshold_optimization.png)
+
+---
+
+## Ce que disent les données
+
+L'ancienneté domine largement les autres variables en permutation importance (0,174 contre 0,026 pour la suivante). Croisée avec l'analyse exploratoire, elle dessine cinq segments prioritaires.
+
+| Rang | Segment | Taux de churn |
+|---|---|---|
+| 1 | Ancienneté < 12 mois | ~48 % (contre ~7 % au-delà de 60 mois) |
+| 2 | Contrat `Month-to-month` | ~43 % (contre 3 % en contrat 2 ans) |
+| 3 | Paiement par `Electronic check` | ~45 % |
+| 4 | Sans `OnlineSecurity` ni `TechSupport` | risque environ doublé |
+| 5 | `MonthlyCharges` > 70 € | élevé |
+
+<p align="center">
+  <img src="graphs/churn_by_tenure.png" width="48%" alt="Churn par ancienneté" />
+  <img src="graphs/churn_by_segments.png" width="48%" alt="Churn par segment" />
+</p>
+
+Ces segments sont déclinés en actions commerciales par client dans [`outputs/ciblage_top10_commercial.csv`](outputs/ciblage_top10_commercial.csv).
+
+---
+
+## Démarrage rapide
+
+```bash
+git clone https://github.com/RomainGuillon/Identifier-churn.git
+cd Identifier-churn
+
+python -m venv .venv
+.venv\Scripts\Activate.ps1        # Windows PowerShell
+# source .venv/bin/activate       # macOS / Linux
+
+pip install -r requirements.txt
+```
+
+Entraînement et scoring en ligne de commande :
+
+```bash
+python src/train.py                     # baseline + finetuné calibré, sauvegarde dans models/ et outputs/
+python src/infer.py --threshold 0.42    # produit outputs/scoring_final.csv
+```
+
+Options d'inférence disponibles : `--model`, `--data`, `--threshold`, `--output`.
+
+Les notebooks s'exécutent dans l'ordre suivant :
+
+| Notebook | Contenu |
+|---|---|
+| [`01_eda.ipynb`](notebooks/01_eda.ipynb) | Analyse exploratoire, qualité des données, segments à risque |
+| [`02_baseline_model.ipynb`](notebooks/02_baseline_model.ipynb) | Pipeline scikit-learn, comparaison de six modèles, choix du baseline |
+| [`03_finetuned_model.ipynb`](notebooks/03_finetuned_model.ipynb) | Feature engineering, GridSearchCV, calibration, seuil économique |
+
+L'ensemble est reproductible (`random_state=42`).
+
+---
+
+## Méthodologie
+
+**Protocole d'évaluation.** Découpage stratifié en trois jeux : train 72 %, test 18 % (comparaison des modèles et choix de seuil), validation 10 % tenue à l'écart jusqu'au contrôle final.
+
+**Prévention des fuites de données.** Toutes les transformations — imputation de `TotalCharges`, standardisation, encodage one-hot — sont apprises uniquement sur le train et encapsulées dans une `Pipeline` scikit-learn. Les 11 clients à `tenure = 0` ont leur `TotalCharges` imputé par `tenure × MonthlyCharges`.
+
+**Modèles comparés.** `DummyClassifier`, `LogisticRegression`, `RandomForest`, `GradientBoosting`, `XGBoost`, `LightGBM`. La régression logistique est retenue : meilleure `precision@10%`, meilleur rappel, et interprétable — un critère qui compte lorsque le modèle doit être défendu devant une direction marketing.
+
+**Finetuning en trois leviers**, activés un à un pour mesurer l'apport de chacun :
+
+1. Feature engineering — `PaymentMethod_grouped`, `Contract_grouped`, `has_family`
+2. Hyperparamètres — `GridSearchCV` (cv=5, scoring=roc_auc), configuration retenue `C=10`, `solver=liblinear`
+3. Calibration — `CalibratedClassifierCV` (sigmoid, cv=5)
+
+![Calibration](reports/figures/calibration_comparison.png)
+
+Rapport de modélisation complet : [`reports/model_report.md`](reports/model_report.md)
+
+---
 
 ## Limites et risques
 
-- **Dataset statique** : pas de dimension temporelle, le modèle ne capture pas l'évolution du comportement client dans le temps.
-- **Taux de succès de rétention** : l'hypothèse de 30% est à valider sur le terrain avant d'extrapoler le gain attendu.
-- **SeniorCitizen** : variable binaire (0/1) traitée comme numérique — à surveiller.
-- **Fuite de données** : toutes les transformations apprennent uniquement sur le train via la Pipeline scikit-learn. Aucun leakage détecté.
-- **Pistes d'amélioration** : tester XGBoost/LightGBM finetuné, ajouter des features d'interaction (ex. `tenure × Contract`), intégrer une dimension temporelle si des données historiques sont disponibles.
+- **Dataset statique.** Aucune dimension temporelle : le modèle ne capture pas l'évolution du comportement client dans le temps. C'est la limite la plus structurante.
+- **Hypothèse de succès de rétention.** Le taux de 30 % conditionne l'intégralité du calcul de gain et reste à valider sur le terrain avant toute extrapolation du retour sur investissement.
+- **Apport limité du finetuning.** Le pouvoir de classement n'est pas amélioré ; le bénéfice se situe exclusivement sur la calibration des probabilités.
+- **Pistes d'amélioration.** Gradient boosting finetuné, features d'interaction (`tenure × Contract`), et intégration d'un historique dès qu'il devient disponible.
+
+---
 
 ## Structure du projet
 
 ```text
 Projet_DataGong/
-├── data/
-│   └── WA_Fn-UseC_-Telco-Customer-Churn.csv
-├── notebooks/
-│   ├── 01_eda.ipynb
-│   ├── 02_baseline_model.ipynb
-│   └── 03_finetuned_model.ipynb
-├── models/
-│   ├── baseline.joblib
-│   └── finetuned.joblib
-├── outputs/
-│   ├── scoring_test.csv
-│   ├── scoring_val.csv
-│   ├── scoring_final.csv
-│   ├── metrics_report.csv
-│   └── metrics_report_calibrated.csv
-├── reports/
-│   ├── model_report.md
-│   └── figures/
-│       ├── model_comparison.png
-│       ├── calibration_comparison.png
-│       ├── permutation_importance.png
-│       ├── threshold_optimization.png
-│       └── baseline_vs_finetuned.png
+├── data/                       # Telco Customer Churn (7 043 clients, Kaggle)
+├── notebooks/                  # 01_eda, 02_baseline_model, 03_finetuned_model
 ├── src/
-│   ├── data_prep.py
-│   ├── train.py
-│   ├── metrics.py
-│   └── infer.py
-├── README.md
-├── requirements.txt
-└── .gitignore
+│   ├── data_prep.py            # chargement, features, split stratifié
+│   ├── train.py                # entraînement baseline et finetuné calibré
+│   ├── metrics.py              # ROC-AUC, precision@K, Brier, gain attendu
+│   └── infer.py                # scoring en ligne de commande, CSV trié par risque
+├── models/                     # baseline.joblib, finetuned.joblib
+├── outputs/                    # scorings, métriques, ciblage commercial top 10 et 20 %
+├── reports/
+│   ├── model_report.md                    # rapport de modélisation détaillé
+│   ├── generate_ciblage_commercial.py     # génère les fichiers de ciblage top 10 et 20 %
+│   └── figures/                           # comparaisons, calibration, importance, seuil
+├── graphs/                     # figures de l'analyse exploratoire
+└── requirements.txt
 ```
 
-## Dépendances principales
+---
 
-- `pandas`, `numpy`
-- `scikit-learn`
-- `matplotlib`, `plotly`
-- `xgboost`, `lightgbm`
-- `joblib`
-- `jupyter` / `ipykernel`
+## Données
+
+Dataset public [Telco Customer Churn](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) (Kaggle) : 7 043 clients, un enregistrement par client, variable cible `Churn` (Yes/No).
+
+Les variables couvrent quatre familles : démographiques (`gender`, `SeniorCitizen`, `Partner`, `Dependents`), de services (`InternetService`, `OnlineSecurity`, `TechSupport`, `StreamingTV`, etc.), contractuelles (`Contract`, `PaperlessBilling`, `PaymentMethod`) et financières (`tenure`, `MonthlyCharges`, `TotalCharges`).
+
+---
+
+## Stack technique
+
+`pandas`, `numpy`, `scikit-learn`, `xgboost`, `lightgbm`, `matplotlib`, `seaborn`, `plotly`, `joblib`, `jupyter`
+
+---
+
+Réalisé par Romain Guillon — projet Data Scientist.
