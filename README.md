@@ -156,8 +156,9 @@ Projet_DataGong/
 ├── models/                     # baseline.joblib, finetuned.joblib
 ├── outputs/                    # scorings, métriques, ciblage commercial top 10 et 20 %
 ├── reports/
-│   ├── model_report.md         # rapport de modélisation détaillé
-│   └── figures/                # comparaisons, calibration, importance, seuil
+│   ├── model_report.md                    # rapport de modélisation détaillé
+│   ├── generate_ciblage_commercial.py     # génère les fichiers de ciblage top 10 et 20 %
+│   └── figures/                           # comparaisons, calibration, importance, seuil
 ├── graphs/                     # figures de l'analyse exploratoire
 └── requirements.txt
 ```
@@ -174,7 +175,7 @@ Les variables couvrent quatre familles : démographiques (`gender`, `SeniorCitiz
 
 ## Stack technique
 
-`pandas`, `numpy`, `scikit-learn`, `xgboost`, `lightgbm`, `matplotlib`, `plotly`, `joblib`, `jupyter`
+`pandas`, `numpy`, `scikit-learn`, `xgboost`, `lightgbm`, `matplotlib`, `seaborn`, `plotly`, `joblib`, `jupyter`
 
 ---
 
