@@ -6,6 +6,7 @@ Prédire quels clients vont résilier, et surtout lesquels cibler en priorité a
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-1.8-blue)
 ![ROC-AUC](https://img.shields.io/badge/ROC--AUC-0.846-informational)
 ![Precision@10%](https://img.shields.io/badge/Precision%4010%25-75.4%25-informational)
+[![Licence : source-available](https://img.shields.io/badge/licence-source--available-red)](./LICENSE)
 
 Projet de Data Science de bout en bout : de l'analyse exploratoire à un fichier de ciblage commercial actionnable, en passant par la comparaison de six modèles, la calibration des probabilités et l'optimisation économique du seuil de décision.
 
@@ -43,16 +44,25 @@ Le finetuning n'améliore pas le pouvoir de classement — ROC-AUC et `precision
 
 Hypothèses métier : coût d'une action de rétention = 15 €, valeur mensuelle sauvée = 120 €, taux de succès estimé = 30 %.
 
-Le seuil économique minimal est `15 / (120 × 0,30) ≈ 0,42`. En dessous, l'action coûte plus qu'elle ne rapporte en espérance.
+Le seuil de rentabilité est `15 / (120 × 0,30) ≈ 0,42`. En dessous, l'action coûte plus qu'elle ne rapporte **en espérance**.
 
-| Stratégie | Clients ciblés | Précision | Gain attendu |
-|---|---|---|---|
-| Top 5 % | 63 | 76,2 % | ~745 € |
-| Top 10 % (budget contraint) | 126 | 75,4 % | ~1 325 € |
-| Top 20 % | 253 | 66,4 % | ~2 026 € |
-| Seuil 0,42 (gain maximal) | 369 (29,1 %) | ~59 % | ~2 240 € |
+| Stratégie | Clients ciblés | Précision | Gain attendu | Gain constaté |
+|---|---|---|---|---|
+| Top 5 % | 63 | 76,2 % | ~745 € | ~783 € |
+| Top 10 % (budget contraint) | 127 | 75,6 % | ~1 333 € | ~1 551 € |
+| Top 20 % | 254 | 66,5 % | ~2 029 € | ~2 274 € |
+| Seuil 0,42 (seuil de rentabilité) | 369 (29,1 %) | 59,1 % | ~2 240 € | ~2 313 € |
+| **Seuil 0,36 (gain constaté maximal)** | **430 (33,9 %)** | **57,9 %** | ~2 184 € | **~2 514 €** |
 
-Mesuré sur le jeu de test (1 268 clients). Deux arbitrages possibles selon la contrainte : maximiser la qualité du ciblage (top 10 %) ou le gain total (seuil 0,42).
+Mesuré sur le jeu de test (1 268 clients).
+
+**Gain attendu et gain constaté ne sont pas la même chose**, et la distinction change la décision.
+
+Le *gain attendu* se calcule à partir des seules probabilités : il est disponible en production, avant de connaître l'issue, mais il suppose des probabilités parfaitement calibrées. Le *gain constaté* se calcule sur les résiliations réellement observées : il ne repose sur aucune hypothèse, et c'est le seul chiffre défendable devant une direction.
+
+Conséquence directe ici : maximiser le gain attendu ramène mécaniquement au seuil de rentabilité, 0,42 — c'est une propriété du calcul, pas un résultat. Mesuré sur les issues réelles, l'optimum se situe à **0,36** et rapporte **201 € de plus**. Le modèle sous-estime légèrement le risque dans cette bande, et il est donc rentable de descendre sous le seuil théorique.
+
+Trois arbitrages possibles selon la contrainte : maximiser la qualité du ciblage (top 10 %), rester au seuil de rentabilité (0,42), ou maximiser le gain mesuré (0,36).
 
 ![Optimisation du seuil](reports/figures/threshold_optimization.png)
 
@@ -133,19 +143,19 @@ Rapport de modélisation complet : [`reports/model_report.md`](reports/model_rep
 
 ---
 
-## Limites et risques
+## Portée du modèle et conditions d'usage
 
-- **Dataset statique.** Aucune dimension temporelle : le modèle ne capture pas l'évolution du comportement client dans le temps. C'est la limite la plus structurante.
-- **Hypothèse de succès de rétention.** Le taux de 30 % conditionne l'intégralité du calcul de gain et reste à valider sur le terrain avant toute extrapolation du retour sur investissement.
-- **Apport limité du finetuning.** Le pouvoir de classement n'est pas amélioré ; le bénéfice se situe exclusivement sur la calibration des probabilités.
-- **Pistes d'amélioration.** Gradient boosting finetuné, features d'interaction (`tenure × Contract`), et intégration d'un historique dès qu'il devient disponible.
+- **Dataset statique.** Aucune dimension temporelle : le modèle ne capture pas l'évolution du comportement client dans le temps. C'est la condition d'usage la plus structurante — les résultats valent pour un scoring ponctuel, pas pour un suivi de trajectoire.
+- **Hypothèse de succès de rétention.** Le taux de 30 % conditionne l'intégralité du calcul de gain. Il doit être validé par test A/B sur le terrain avant toute extrapolation du retour sur investissement — c'est le premier chantier d'une mise en production.
+- **Périmètre du finetuning.** Le pouvoir de classement n'est pas amélioré ; le bénéfice porte exclusivement sur la calibration des probabilités, ce qui est précisément ce qu'exige un raisonnement en euros.
+- **Extensions identifiées.** Gradient boosting finetuné, features d'interaction (`tenure × Contract`), et intégration d'un historique dès qu'il devient disponible.
 
 ---
 
 ## Structure du projet
 
 ```text
-Projet_DataGong/
+Identifier-churn/
 ├── data/                       # Telco Customer Churn (7 043 clients, Kaggle)
 ├── notebooks/                  # 01_eda, 02_baseline_model, 03_finetuned_model
 ├── src/
@@ -160,6 +170,8 @@ Projet_DataGong/
 │   ├── generate_ciblage_commercial.py     # génère les fichiers de ciblage top 10 et 20 %
 │   └── figures/                           # comparaisons, calibration, importance, seuil
 ├── graphs/                     # figures de l'analyse exploratoire
+├── LICENSE                     # conditions d'utilisation du code
+├── NOTICE.md                   # mentions, contact, provenance des données
 └── requirements.txt
 ```
 
@@ -171,11 +183,37 @@ Dataset public [Telco Customer Churn](https://www.kaggle.com/datasets/blastchar/
 
 Les variables couvrent quatre familles : démographiques (`gender`, `SeniorCitizen`, `Partner`, `Dependents`), de services (`InternetService`, `OnlineSecurity`, `TechSupport`, `StreamingTV`, etc.), contractuelles (`Contract`, `PaperlessBilling`, `PaymentMethod`) et financières (`tenure`, `MonthlyCharges`, `TotalCharges`).
 
+Ce jeu de données reste soumis aux conditions de sa source — voir [`NOTICE.md`](./NOTICE.md).
+
 ---
 
 ## Stack technique
 
 `pandas`, `numpy`, `scikit-learn`, `xgboost`, `lightgbm`, `matplotlib`, `seaborn`, `plotly`, `joblib`, `jupyter`
+
+---
+
+## 📄 Licence
+
+**Copyright (c) 2026 Romain Guillon — Tous droits réservés.**
+
+Ce dépôt est publié en **accès visible (*source-available*)** : le code est consultable pour évaluer mon travail, mais il **n'est pas open source**.
+
+|  | Autorisé | Interdit |
+|---|---|---|
+| **Lire le code** | ✅ | |
+| **Lancer le projet pour reproduire les résultats** | ✅ | |
+| **Copier tout ou partie du code** | | ❌ |
+| **Modifier / créer une œuvre dérivée** | | ❌ |
+| **Redistribuer / republier** | | ❌ |
+| **Usage commercial ou en production** | | ❌ |
+| **Entraîner un modèle d'IA dessus** | | ❌ |
+
+Conditions complètes : [`LICENSE`](./LICENSE) — mentions et contact : [`NOTICE.md`](./NOTICE.md).
+
+> Cette approche vous intéresse pour votre propre parc client ? Une **licence commerciale** et un accompagnement à l'intégration sont disponibles. Écrivez-moi, c'est le plus simple.
+
+**English —** This repository is *source-available*, not open source. You may read the code and reproduce the results; you may not copy, modify, redistribute or use it commercially. See [`LICENSE`](./LICENSE). Commercial licensing available on request.
 
 ---
 

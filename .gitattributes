@@ -1,0 +1,16 @@
+# Classement des langages affiché par GitHub (linguist).
+# Les notebooks servent la démonstration, ils ne sont pas le livrable
+# technique : les compter comme documentation fait remonter Python en
+# langage principal du dépôt.
+notebooks/** linguist-documentation
+*.ipynb linguist-documentation
+
+# Normalisation des fins de ligne (projet développé sous Windows).
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+*.csv text eol=lf
+
+# Fichiers binaires : pas de diff textuel
+*.joblib binary
+*.png binary
